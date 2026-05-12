@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(where javac *)",
+      "Bash(javac -d /tmp/out_classes C:/Users/israe/Downloads/practicasRedes2/practica2/transmisionMP3/src/main/java/org/example/Mp3Player.java C:/Users/israe/Downloads/practicasRedes2/practica2/transmisionMP3/src/main/java/org/example/Paquete.java C:/Users/israe/Downloads/practicasRedes2/practica2/transmisionMP3/src/main/java/org/example/Server.java C:/Users/israe/Downloads/practicasRedes2/practica2/transmisionMP3/src/main/java/org/example/Client.java C:/Users/israe/Downloads/practicasRedes2/practica2/transmisionMP3/src/main/java/org/example/Main.java)",
+      "Bash(\"C:/Users/israe/.jdks/openjdk-26/bin/mvn.cmd\" compile *)",
+      "Bash(cmd.exe /c \"mvn compile -q\")",
+      "Bash(where mvn *)",
+      "Read(//c/Users/israe/**)",
+      "Bash(\"/c/Users/israe/.vscode/extensions/oracle.oracle-java-25.0.0/nbcode/java/maven/bin/mvn.cmd\" compile *)",
+      "Bash(\"/c/Users/israe/.vscode/extensions/oracle.oracle-java-25.0.0/nbcode/java/maven/bin/mvn.cmd\" dependency:tree)",
+      "Bash(javac -cp /c/Users/israe/.m2/repository/javazoom/jlayer/1.0.1/jlayer-1.0.1.jar /tmp/TestJLayer.java -d /tmp/testout/)",
+      "Bash(java -cp /c/Users/israe/.m2/repository/javazoom/jlayer/1.0.1/jlayer-1.0.1.jar:/tmp/testout TestJLayer /c/Users/israe/AppData/Local/Microsoft/Office/SolutionPackages/6c16920870f3e0fc55f9a81b606bfbef/PackageResources/fluidhost/static/media/wl_completion_sound.13a69e47a3545eb5ac81.mp3)",
+      "Bash(java -cp /c/Users/israe/.m2/repository/javazoom/jlayer/1.0.1/jlayer-1.0.1.jar:/tmp/testout TestJLayer C:/Users/israe/Downloads/practicasRedes2/practica2/transmisionMP3/src/main/resources/granturismoMusic.m4a)"
+    ]
+  }
+}
