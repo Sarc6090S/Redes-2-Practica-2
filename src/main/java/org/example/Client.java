@@ -11,8 +11,8 @@ import java.net.InetAddress;
 
 public class Client {
 
-    private static final int PUERTO_CLIENTE = 5678;
-    private static final int PUERTO_SERVIDOR = 1234;
+    private static final int PUERTO_CLIENTE = 5666;
+    private static final int PUERTO_SERVIDOR = 9999;
     private static final int TAM_BUFFER = 7000;
 
     public static void main(String[] args) {
@@ -92,7 +92,8 @@ public class Client {
             }
             byte[] archivoReconstruido = baos.toByteArray();
 
-            String rutaSalida = "C:/Users/israe/Downloads/practicasRedes2/practica2/transmisionMP3/src/main/cancion_recibida/cancion_recibida.mp3";
+            String rutaSalida = "cancion_recibida.mp3";
+
             try (FileOutputStream fos = new FileOutputStream(rutaSalida)) {
                 fos.write(archivoReconstruido);
             }
@@ -104,8 +105,10 @@ public class Client {
             System.out.printf("Tiempo total: %.2f segundos%n", tiempoTotal / 1000.0);
             System.out.println("Paquetes recibidos: " + paquetesContados + " | Duplicados: " + duplicados);
 
-            System.out.println("Abriendo con el reproductor del sistema...");
-            Desktop.getDesktop().open(new File(rutaSalida));
+//            System.out.println("Abriendo con el reproductor del sistema...");
+//            Desktop.getDesktop().open(new File(rutaSalida));
+            ReproductorMP3.abrir(rutaSalida);
+
 
         } catch (IOException e) {
             System.err.println("Error de red: " + e.getMessage());

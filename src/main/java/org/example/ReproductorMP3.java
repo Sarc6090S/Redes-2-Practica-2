@@ -8,6 +8,8 @@ import java.awt.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.util.List;
 
 /**
  * Reproductor de audio. Detecta el formato real por magic bytes (no por extensión).
@@ -15,12 +17,11 @@ import java.io.IOException;
  *   MP3             → JLayer (Bitstream/Decoder)
  *   WAV, AIFF, AU   → javax.sound.sampled nativo
  *   OGG Vorbis      → vorbisspi SPI
- * No soportado (muestra error claro):
- *   M4A/AAC/MP4     → magic bytes 'ftyp' en offset 4
+ *   M4A / AAC       → JAAD (API directa)
  */
 public class ReproductorMP3 extends JFrame {
 
-    private enum Formato { MP3, GENERICO, NO_SOPORTADO }
+    private enum Formato { MP3, M4A, GENERICO, NO_SOPORTADO }
 
     private SourceDataLine linea;
     private FloatControl controlVolumen;
@@ -125,9 +126,9 @@ public class ReproductorMP3 extends JFrame {
 
             switch (fmt) {
                 case MP3      -> reproducirMP3();
+                case M4A      -> reproducirM4A();
                 case GENERICO -> reproducirGenerico();
                 case NO_SOPORTADO -> {
-                    // El mensaje de error ya fue puesto por detectarFormato()
                     reproduciendo = false;
                     SwingUtilities.invokeLater(() -> btnPlayPause.setText("▶  Reproducir"));
                     return;
@@ -193,19 +194,9 @@ public class ReproductorMP3 extends JFrame {
             // FLAC
             if (b[0] == 'f' && b[1] == 'L' && b[2] == 'a' && b[3] == 'C') return Formato.GENERICO;
 
-            // MPEG-4 / M4A / AAC: los bytes 4-7 son 'ftyp'
+            // MPEG-4 / M4A: bytes 4-7 son 'ftyp'
             if (n >= 8 && b[4] == 'f' && b[5] == 't' && b[6] == 'y' && b[7] == 'p') {
-                String subtipo = n >= 12
-                        ? new String(new byte[]{b[8], b[9], b[10], b[11]}).trim()
-                        : "?";
-                String msg = "Formato no soportado: MPEG-4/M4A (" + subtipo + ")\n"
-                           + "Coloca un archivo .mp3 real en resources/";
-                SwingUtilities.invokeLater(() -> {
-                    lblEstado.setForeground(Color.RED);
-                    lblEstado.setText("No soportado: M4A/AAC — usa un .mp3 real");
-                });
-                System.err.println(msg);
-                return Formato.NO_SOPORTADO;
+                return Formato.M4A;
             }
 
             // Desconocido: intentar con AudioSystem
@@ -223,16 +214,12 @@ public class ReproductorMP3 extends JFrame {
 
     private void reproducirMP3() {
         try {
-            // Primera pasada: leer cabecera del primer frame para obtener el formato PCM
             int sampleRate;
             int canales;
             try (FileInputStream fis = new FileInputStream(rutaArchivo)) {
                 Bitstream bs = new Bitstream(fis);
                 Header h = bs.readFrame();
-                if (h == null) {
-                    setEstadoError("MP3 inválido o vacío");
-                    return;
-                }
+                if (h == null) { setEstadoError("MP3 inválido o vacío"); return; }
                 sampleRate = h.frequency();
                 canales    = (h.mode() == Header.SINGLE_CHANNEL) ? 1 : 2;
                 bs.close();
@@ -245,7 +232,6 @@ public class ReproductorMP3 extends JFrame {
             iniciarControlVolumen();
             linea.start();
 
-            // Segunda pasada: decodificar frames y escribir en la línea
             try (FileInputStream fis = new FileInputStream(rutaArchivo)) {
                 Bitstream bitstream = new Bitstream(fis);
                 Decoder   decoder   = new Decoder();
@@ -255,7 +241,7 @@ public class ReproductorMP3 extends JFrame {
                     while (pausado && !detenido) Thread.sleep(30);
                     if (detenido) break;
 
-                    SampleBuffer salida  = (SampleBuffer) decoder.decodeFrame(frame, bitstream);
+                    SampleBuffer salida   = (SampleBuffer) decoder.decodeFrame(frame, bitstream);
                     int          longitud = salida.getBufferLength();
                     short[]      muestras = salida.getBuffer();
                     byte[]       pcm      = new byte[longitud * 2];
@@ -279,6 +265,66 @@ public class ReproductorMP3 extends JFrame {
             setEstadoError("Línea de audio no disponible");
         } catch (IOException | InterruptedException e) {
             if (!detenido) setEstadoError("Error: " + e.getMessage());
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Ruta M4A — JAAD API directa
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private void reproducirM4A() {
+        try {
+            net.sourceforge.jaad.mp4.MP4Container cont =
+                    new net.sourceforge.jaad.mp4.MP4Container(
+                            new RandomAccessFile(rutaArchivo, "r"));
+
+            net.sourceforge.jaad.mp4.api.Movie movie = cont.getMovie();
+
+            // Buscar la primera pista de audio
+            net.sourceforge.jaad.mp4.api.AudioTrack track = null;
+            List<net.sourceforge.jaad.mp4.api.Track> tracks = movie.getTracks();
+            for (net.sourceforge.jaad.mp4.api.Track t : tracks) {
+                if (t instanceof net.sourceforge.jaad.mp4.api.AudioTrack) {
+                    track = (net.sourceforge.jaad.mp4.api.AudioTrack) t;
+                    break;
+                }
+            }
+            if (track == null) { setEstadoError("M4A sin pista de audio"); return; }
+
+            float sampleRate = (float) track.getSampleRate();
+            int   canales    = track.getChannelCount();
+
+            AudioFormat fmt    = new AudioFormat(sampleRate, 16, canales, true, false);
+            DataLine.Info info  = new DataLine.Info(SourceDataLine.class, fmt);
+            linea = (SourceDataLine) AudioSystem.getLine(info);
+            linea.open(fmt);
+            iniciarControlVolumen();
+            linea.start();
+
+            net.sourceforge.jaad.aac.Decoder decoder =
+                    new net.sourceforge.jaad.aac.Decoder(track.getDecoderSpecificInfo());
+
+            net.sourceforge.jaad.mp4.api.Frame frame;
+            while ((frame = track.readNextFrame()) != null && !detenido) {
+                while (pausado && !detenido) Thread.sleep(30);
+                if (detenido) break;
+
+                net.sourceforge.jaad.aac.SampleBuffer buf =
+                        new net.sourceforge.jaad.aac.SampleBuffer();
+                decoder.decodeFrame(frame.getData(), buf);
+                byte[] pcm = buf.getData();
+                if (pcm != null && pcm.length > 0) linea.write(pcm, 0, pcm.length);
+            }
+
+            linea.drain();
+            linea.close();
+
+        } catch (LineUnavailableException e) {
+            setEstadoError("Línea de audio no disponible");
+        } catch (InterruptedException e) {
+            if (!detenido) setEstadoError("Interrumpido");
+        } catch (Exception e) {
+            if (!detenido) setEstadoError("Error M4A: " + e.getMessage());
         }
     }
 
@@ -343,7 +389,6 @@ public class ReproductorMP3 extends JFrame {
         controlVolumen.setValue(min + (max - min) * (valor / 100.0f));
     }
 
-    /** Actualiza label + botón desde cualquier hilo. */
     private void setEstado(String estado, String textoBoton) {
         SwingUtilities.invokeLater(() -> {
             lblEstado.setForeground(Color.GRAY);
@@ -352,7 +397,6 @@ public class ReproductorMP3 extends JFrame {
         });
     }
 
-    /** Muestra error en rojo y resetea el botón. No sobreescribible por flujo normal. */
     private void setEstadoError(String msg) {
         reproduciendo = false;
         SwingUtilities.invokeLater(() -> {

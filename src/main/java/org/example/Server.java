@@ -9,7 +9,7 @@ import java.net.SocketTimeoutException;
 
 public class Server {
 
-    private static final int PUERTO_SERVIDOR = 1234;
+    private static final int PUERTO_SERVIDOR = 9999;
     private static final int WINDOW_SIZE = 10;
     private static final int TIMEOUT = 500;
     private static final int TAM_DATOS = 6492;
@@ -18,7 +18,7 @@ public class Server {
     public static void main(String[] args) {
         Mp3Player mp3Player = new Mp3Player();
 
-        var recurso = Server.class.getClassLoader().getResource("granturismoMusic.m4a");
+        var recurso = Server.class.getClassLoader().getResource("[Dubstep] - Droptek & Tut Tut Child - Drop That Child [Monstercat Release].mp3");
         if (recurso == null) {
             System.err.println("Canción no encontrada en resources/");
             return;

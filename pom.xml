@@ -33,6 +33,11 @@
             <artifactId>tritonus-share</artifactId>
             <version>0.3.7.4</version>
         </dependency>
+        <dependency>
+            <groupId>de.sfuhrm</groupId>
+            <artifactId>jaad</artifactId>
+            <version>0.8.7</version>
+        </dependency>
     </dependencies>
 
 </project>
